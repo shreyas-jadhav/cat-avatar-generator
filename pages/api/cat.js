@@ -16,9 +16,13 @@ async function buildCat(parts, width) {
         return path.join(dir, png);
     });
 
+    const resizedParts = await Promise.all(
+        paths.map(p => sharp(p).resize(width, width).toBuffer())
+    );
+
     return sharp(cat)
-        .composite(paths.map(a => ({ input: a })))
-        .resize(width, width) // Ensure the image is resized to the given width
+        .composite(resizedParts.map(input => ({ input })))
+        .resize(width, width) // Ensure the final image is resized to the given width
         .png()
         .toBuffer();
 }
@@ -34,16 +38,19 @@ async function cacheCat(parts, width) {
         return path.join(dir, png);
     });
 
+    const resizedParts = await Promise.all(
+        paths.map(p => sharp(p).resize(width, width).toBuffer())
+    );
+
     const buffer = await sharp({
         create: {
-            width: 256,
-            height: 256,
+            width: width,
+            height: width,
             channels: 4,
             background: { r: 0, g: 0, b: 0, alpha: 0 },
         },
     })
-        .composite(paths.map(a => ({ input: a })))
-        .resize(width, width) // Ensure the image is resized to the given width
+        .composite(resizedParts.map(input => ({ input })))
         .png()
         .toBuffer();
 
@@ -72,7 +79,8 @@ export default async function handler(req, res) {
         const parts = req.query.parts.split(",").map(Number);
         try {
             buffer = await buildCat(parts, width);
-        } catch (_) {
+        } catch (error) {
+            console.error(error);
             return res.status(422).end();
         }
     } else {
