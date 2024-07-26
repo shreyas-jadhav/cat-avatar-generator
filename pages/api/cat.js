@@ -76,7 +76,7 @@ export default async function handler(req, res) {
         const parts = randomParts(seed);
 
         if("partDetails" in req.query) {
-            return res.status(200).json(parts)
+            return res.status(200).json(parts);
         }
 
         buffer = await buildCat(parts);
