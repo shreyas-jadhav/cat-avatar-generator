@@ -6,8 +6,8 @@ import sharp from "sharp";
 const cache = new Map();
 const dir = path.join(process.cwd(), "assets");
 
-async function buildCat(parts) {
-    const cat = await cacheCat(parts.slice(0, 3));
+async function buildCat(parts, width) {
+    const cat = await cacheCat(parts.slice(0, 3), width);
 
     const names = ["mouth", "accessorie"];
     const paths = names.map((name, i) => {
@@ -18,12 +18,13 @@ async function buildCat(parts) {
 
     return sharp(cat)
         .composite(paths.map(a => ({ input: a })))
+        .resize(width, width) // Ensure the image is resized to the given width
         .png()
         .toBuffer();
 }
 
-async function cacheCat(parts) {
-    const key = parts.join(" ");
+async function cacheCat(parts, width) {
+    const key = `${parts.join(" ")}_${width}`;
     if (cache.has(key)) return cache.get(key);
 
     const names = ["body", "fur", "eyes"];
@@ -42,6 +43,7 @@ async function cacheCat(parts) {
         },
     })
         .composite(paths.map(a => ({ input: a })))
+        .resize(width, width) // Ensure the image is resized to the given width
         .png()
         .toBuffer();
 
@@ -64,10 +66,12 @@ function randomParts(seed) {
 
 export default async function handler(req, res) {
     let buffer;
+    const width = req.query.width ? parseInt(req.query.width, 10) : 256; // Default to 256 if width is not provided
+
     if ("parts" in req.query) {
         const parts = req.query.parts.split(",").map(Number);
         try {
-            buffer = await buildCat(parts);
+            buffer = await buildCat(parts, width);
         } catch (_) {
             return res.status(422).end();
         }
@@ -75,11 +79,11 @@ export default async function handler(req, res) {
         const seed = hash(req.query.name ?? "");
         const parts = randomParts(seed);
 
-        if("partDetails" in req.query) {
+        if ("partDetails" in req.query) {
             return res.status(200).json(parts);
         }
 
-        buffer = await buildCat(parts);
+        buffer = await buildCat(parts, width);
     }
 
     res.setHeader("Content-Type", "image/png");
