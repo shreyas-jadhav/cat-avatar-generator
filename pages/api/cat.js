@@ -74,6 +74,11 @@ export default async function handler(req, res) {
     } else {
         const seed = hash(req.query.name ?? "");
         const parts = randomParts(seed);
+
+        if("partDetails" in req.query) {
+            return res.status(200).json(parts)
+        }
+
         buffer = await buildCat(parts);
     }
 
